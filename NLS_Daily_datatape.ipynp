@@ -1,0 +1,385 @@
+from pyspark.sql import SparkSession
+from pyspark import SparkContext, SparkConf
+from pyspark.sql import *
+from pyspark.sql import SQLContext
+from pyspark.sql.types import *
+import pyspark.sql.functions as f
+from pyspark.sql.functions import col
+
+VBox()
+Starting Spark application
+ID	YARN Application ID	Kind	State	Spark UI	Driver log	User	Current session?
+5402	application_1731599405308_5382	pyspark	idle	Link	Link	None	✔
+
+FloatProgress(value=0.0, bar_style='info', description='Progress:', layout=Layout(height='25px', width='50%'),…
+SparkSession available as 'spark'.
+FloatProgress(value=0.0, bar_style='info', description='Progress:', layout=Layout(height='25px', width='50%'),…
+
+## run only in pyspark submit
+sc = SparkContext()
+
+
+VBox()
+FloatProgress(value=0.0, bar_style='info', description='Progress:', layout=Layout(height='25px', width='50%'),…
+An error was encountered:
+Cannot run multiple SparkContexts at once; existing SparkContext(app=livy-session-4520, master=yarn) created by __init__ at /mnt2/yarn/usercache/livy/appcache/application_1731599405308_4506/container_1731599405308_4506_01_000001/tmp/1871053432233540198:600 
+Traceback (most recent call last):
+  File "/mnt2/yarn/usercache/livy/appcache/application_1731599405308_4506/container_1731599405308_4506_01_000001/pyspark.zip/pyspark/context.py", line 198, in __init__
+    SparkContext._ensure_initialized(self, gateway=gateway, conf=conf)
+  File "/mnt2/yarn/usercache/livy/appcache/application_1731599405308_4506/container_1731599405308_4506_01_000001/pyspark.zip/pyspark/context.py", line 457, in _ensure_initialized
+    callsite.linenum,
+ValueError: Cannot run multiple SparkContexts at once; existing SparkContext(app=livy-session-4520, master=yarn) created by __init__ at /mnt2/yarn/usercache/livy/appcache/application_1731599405308_4506/container_1731599405308_4506_01_000001/tmp/1871053432233540198:600 
+
+
+spark = SQLContext(sc)
+
+
+import psycopg2
+import configparser
+with open('/mnt/usr/local/src/config/loader.py') as f: exec(f.read())
+
+def get_sql_server_cred(system):
+    if(system=='sql'):
+        return 'jdbc:sqlserver://rs11-primary.nortridgehosting.com', 'pplrs8818', 't3R0bm$6'
+    
+
+VBox()
+FloatProgress(value=0.0, bar_style='info', description='Progress:', layout=Layout(height='25px', width='50%'),…
+An error was encountered:
+[Errno 2] No such file or directory: '/mnt/usr/local/src/config/loader.py'
+Traceback (most recent call last):
+FileNotFoundError: [Errno 2] No such file or directory: '/mnt/usr/local/src/config/loader.py'
+
+
+serverName , user_name,passwd = get_sql_server_cred("sql")
+dataBaseName = "Purchasing_Power_Prod"
+url = serverName +";" + "dataBaseName=" +dataBaseName + ";"
+preloadDf = spark.read \
+            .format("jdbc") \
+            .option("url", url) \
+            .option("dbtable", "_ppc_pfr_preloads_filtered_tb") \
+            .option('driver', 'com.microsoft.sqlserver.jdbc.SQLServerDriver') \
+            .option("user", user_name) \
+            .option("password", passwd).load()
+
+## Load into GP
+tablename = "nls_pfr_preloads"
+schemaname = "nls"
+gscPythonOptions = GPConfig()
+gscPythonOptions["dbtable"]=tablename
+gscPythonOptions["dbschema"]=schemaname
+preloadDf.write.format('greenplum').options(**gscPythonOptions).mode('append').save()
+print('nls_pfr_preloads Loaded : ',preloadDf.count())
+
+VBox()
+Starting Spark application
+ID	YARN Application ID	Kind	State	Spark UI	Driver log	User	Current session?
+4859	application_1731599405308_4842	pyspark	idle	Link	Link	None	✔
+
+
+FloatProgress(value=0.0, bar_style='info', description='Progress:', layout=Layout(height='25px', width='50%'),…
+SparkSession available as 'spark'.
+FloatProgress(value=0.0, bar_style='info', description='Progress:', layout=Layout(height='25px', width='50%'),…
+An error was encountered:
+An error occurred while calling o101.load.
+: java.lang.ClassNotFoundException: com.microsoft.sqlserver.jdbc.SQLServerDriver
+	at java.net.URLClassLoader.findClass(URLClassLoader.java:387)
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:418)
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:351)
+	at org.apache.spark.sql.execution.datasources.jdbc.DriverRegistry$.register(DriverRegistry.scala:46)
+	at org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.$anonfun$driverClass$1(JDBCOptions.scala:103)
+	at org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.$anonfun$driverClass$1$adapted(JDBCOptions.scala:103)
+	at scala.Option.foreach(Option.scala:407)
+	at org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.<init>(JDBCOptions.scala:103)
+	at org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.<init>(JDBCOptions.scala:41)
+	at org.apache.spark.sql.execution.datasources.jdbc.JdbcRelationProvider.createRelation(JdbcRelationProvider.scala:34)
+	at org.apache.spark.sql.execution.datasources.DataSource.resolveRelation(DataSource.scala:346)
+	at org.apache.spark.sql.DataFrameReader.loadV1Source(DataFrameReader.scala:229)
+	at org.apache.spark.sql.DataFrameReader.$anonfun$load$2(DataFrameReader.scala:211)
+	at scala.Option.getOrElse(Option.scala:189)
+	at org.apache.spark.sql.DataFrameReader.load(DataFrameReader.scala:211)
+	at org.apache.spark.sql.DataFrameReader.load(DataFrameReader.scala:172)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:244)
+	at py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:374)
+	at py4j.Gateway.invoke(Gateway.java:282)
+	at py4j.commands.AbstractCommand.invokeMethod(AbstractCommand.java:132)
+	at py4j.commands.CallCommand.execute(CallCommand.java:79)
+	at py4j.GatewayConnection.run(GatewayConnection.java:238)
+	at java.lang.Thread.run(Thread.java:750)
+
+Traceback (most recent call last):
+  File "/mnt1/yarn/usercache/livy/appcache/application_1731599405308_4842/container_1731599405308_4842_01_000001/pyspark.zip/pyspark/sql/readwriter.py", line 307, in load
+    return self._df(self._jreader.load())
+  File "/mnt1/yarn/usercache/livy/appcache/application_1731599405308_4842/container_1731599405308_4842_01_000001/py4j-0.10.9.7-src.zip/py4j/java_gateway.py", line 1323, in __call__
+    answer, self.gateway_client, self.target_id, self.name)
+  File "/mnt1/yarn/usercache/livy/appcache/application_1731599405308_4842/container_1731599405308_4842_01_000001/pyspark.zip/pyspark/errors/exceptions/captured.py", line 169, in deco
+    return f(*a, **kw)
+  File "/mnt1/yarn/usercache/livy/appcache/application_1731599405308_4842/container_1731599405308_4842_01_000001/py4j-0.10.9.7-src.zip/py4j/protocol.py", line 328, in get_return_value
+    format(target_id, ".", name), value)
+py4j.protocol.Py4JJavaError: An error occurred while calling o101.load.
+: java.lang.ClassNotFoundException: com.microsoft.sqlserver.jdbc.SQLServerDriver
+	at java.net.URLClassLoader.findClass(URLClassLoader.java:387)
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:418)
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:351)
+	at org.apache.spark.sql.execution.datasources.jdbc.DriverRegistry$.register(DriverRegistry.scala:46)
+	at org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.$anonfun$driverClass$1(JDBCOptions.scala:103)
+	at org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.$anonfun$driverClass$1$adapted(JDBCOptions.scala:103)
+	at scala.Option.foreach(Option.scala:407)
+	at org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.<init>(JDBCOptions.scala:103)
+	at org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.<init>(JDBCOptions.scala:41)
+	at org.apache.spark.sql.execution.datasources.jdbc.JdbcRelationProvider.createRelation(JdbcRelationProvider.scala:34)
+	at org.apache.spark.sql.execution.datasources.DataSource.resolveRelation(DataSource.scala:346)
+	at org.apache.spark.sql.DataFrameReader.loadV1Source(DataFrameReader.scala:229)
+	at org.apache.spark.sql.DataFrameReader.$anonfun$load$2(DataFrameReader.scala:211)
+	at scala.Option.getOrElse(Option.scala:189)
+	at org.apache.spark.sql.DataFrameReader.load(DataFrameReader.scala:211)
+	at org.apache.spark.sql.DataFrameReader.load(DataFrameReader.scala:172)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:244)
+	at py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:374)
+	at py4j.Gateway.invoke(Gateway.java:282)
+	at py4j.commands.AbstractCommand.invokeMethod(AbstractCommand.java:132)
+	at py4j.commands.CallCommand.execute(CallCommand.java:79)
+	at py4j.GatewayConnection.run(GatewayConnection.java:238)
+	at java.lang.Thread.run(Thread.java:750)
+
+
+cust_trx_sql = """
+select t.loan_number purchase_order ,
+tl.transaction_reference_no trx_number,
+tl.transaction_code cust_trx_type_id,
+tt.set_of_books_id,
+tl.transaction_date trx_date,
+tt.account_class,
+t.acctrefno customer_trx_id,
+tl.transrefno customer_trx_line_id,
+--td.row_id cust_trx_line_gl_dist_id, 
+tt.name trans_type,
+tt.ppc_description tran_desc,
+tt.trans_type tran_type_code,
+lc.userdef14 reason_code,
+tt.action action,
+lc.userdef04 inventory_item_id,
+lc.userdef03 line_id,
+lc.userdef19 oe_line_id,
+lc.userdef06 description,
+tl.transaction_date  posted,
+tl.gl_date revenue_gl_date,
+tl.transaction_amount revenue,
+lc.userdef04 warrenty_item,
+lc.userdef08 display_price,
+'LINE' line_type,tt.transaction_code,tt.base_classification,tt.type,lc.userdef11,lc.userdef18
+from loanacct (nolock) t join  loanacct_collateral_link (nolock)  lcl on lcl.acctrefno = t.acctrefno
+left join LOANACCT_COLLATERAL (nolock)  lc  on lc.collateral_id = lcl.collateral_id
+left join loanacct_trans_history (nolock) tl on tl.userdef04 = cast(lc.collateral_id as varchar(50)) AND ((tl.userdef04 IS NOT NULL AND tl.userdef04 = cast(lc.collateral_id as varchar(50))) OR (tl.userdef04 is null))
+left join _ppc_loan_transaction_code_attributes (nolock) tt on  tl.transaction_code = tt.transaction_code
+where (tl.transaction_description  != 'Operational Charge-Off' and tt.name !='NA')                  
+"""
+
+
+cash_sql = """ select
+	t.loan_number,
+	t.acctrefno,
+	tl.transrefno,
+	tl.transaction_reference_no,
+	tl.reversal_transrefno,
+	tl.transaction_code,
+	tl.transaction_date,
+	tl.transaction_amount,
+	case
+		when cr.transrefno is null then tl.transaction_amount
+		else 0.00
+	end preload_amount,
+	tt.tc_balance_affected1 loan_balance_1_affected,
+	tl.user_reference,
+	tl.transaction_type,
+	tl.gl_date,
+	tl.payment_method_no,
+	tl.payment_method_reference,
+	tl.date_due,
+	tt.cust_trx_type_id,
+	tt.ppc_description,
+	tt.tc_transaction_description,
+	tt.trans_type,
+	tt.base_classification,
+	tt.financial_classificiation,
+	tt.default_status,
+	tt.name,
+	td.transcode,
+	td.transrefno gl_transrefno,
+	b.batch_no,
+	b.batch_reference,
+	b.deposit_date,
+	td.gl_credit_string,
+	td.gl_debit_string
+from
+	loanacct (nolock) t
+join loanacct_trans_history (nolock) tl on
+	t.acctrefno = tl.acctrefno
+	and (tl.userdef04 is null)
+left join _ppc_loan_transaction_code_attributes (nolock) tt on
+	tl.transaction_code = tt.transaction_code
+left join loanacct_gl_trans (nolock) td on
+	tl.transrefno = td.transrefno
+left join batch_transaction b with (nolock) on
+	tl.batch_no = b.batch_no
+left outer join 
+    (
+	select
+		pr.transrefno,
+		pr.acctrefno,
+		pr.transaction_date,
+		pr.transaction_amount,
+		pr.payment_method_reference
+	from
+		loanacct_trans_history pr with (nolock)
+	where
+		pr.transaction_code in (520, 522)
+			and pr.reversal_transrefno = 0) cr 
+    on
+	cr.acctrefno = t.acctrefno
+	and cr.payment_method_reference = tl.transaction_reference_no
+where
+	((tt.financial_classificiation = 'Payments'
+		and tt.tc_balance_affected1 != 'N')
+	or tl.transaction_code = 510)
+ """
+
+
+
+# serverName , user_name,passwd = get_sql_server_cred("sql")
+# dataBaseName = "Purchasing_Power_Prod"
+# url = serverName +";" + "dataBaseName=" +dataBaseName + ";"
+# jdbcDF = spark.read \
+#             .format("jdbc") \
+#             .option("url", url) \
+#             .option("query", cust_trx_sql) \
+#             .option('driver', 'com.microsoft.sqlserver.jdbc.SQLServerDriver') \
+#             .option("user", user_name) \
+#             .option("password", passwd).load()
+
+# ## Load into GP
+
+
+# gscPythonOptions = {
+#     "url": "jdbc:postgresql://edm_gp_prod.edm.ppc:6432/edmprod",
+#     "user": "null",
+#     "password": "null",
+#     "dbschema": "nls",
+#     "dbtable": "nls_cust_trx_fact"
+# }
+
+# jdbcDF.write.format('greenplum').options(**gscPythonOptions).mode('overwrite').option("truncate",True).save()
+
+
+
+
+# serverName , user_name,passwd = get_sql_server_cred("sql")
+# dataBaseName = "Purchasing_Power_Prod"
+# url = serverName +";" + "dataBaseName=" +dataBaseName + ";"
+# cashDf = spark.read \
+#             .format("jdbc") \
+#             .option("url", url) \
+#             .option("query", cash_sql) \
+#             .option('driver', 'com.microsoft.sqlserver.jdbc.SQLServerDriver') \
+#             .option("user", user_name) \
+#             .option("password", passwd).load()
+
+
+# ## Load into GP
+# gscPythonOptions = {
+#     "url": "jdbc:postgresql://edm_gp_prod.edm.ppc:6432/edmprod",
+#     "user": "null",
+#     "password": "null",
+#     "dbschema": "nls",
+#     "dbtable": "nls_cash_trx_fact"
+# }
+
+# cashDf.write.format('greenplum').options(**gscPythonOptions).mode('overwrite').option("truncate",True).save()
+
+
+
+# url,user_name,passwd =get_oracle_cred("prodfin")
+# sourcetable = "xxcontract.XXCON_NLSACCOUNT"
+# partitionColumn ="CREATIONDATE"
+# lowerBound ='2005-01-01 00:00:00'
+# upperBound ='2026-01-01 00:00:00'
+# batch_size =50
+# accountDF = spark.read \
+#    .format("jdbc") \
+#     .option("dbtable",sourcetable) \
+#     .option("url",url ) \
+#     .option("user",user_name) \
+#     .option("password", passwd ) \
+#     .option("partitionColumn", partitionColumn) \
+#     .option("lowerBound", lowerBound) \
+#     .option("upperBound", upperBound) \
+#     .option("numPartitions", batch_size) \
+#     .option("driver", "oracle.jdbc.driver.OracleDriver") \
+#     .option("oracle.jdbc.mapDateToTimestamp", "false")\
+#     .option("sessionInitStatement", "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD hh24:mi:ss'")\
+#     .option("fetchsize","50000") \
+#     .load()#.filter("LAUNCH_TYPE not in ('X','U','V','T')")
+# accountDF=accountDF.toDF(*[c.lower() for c in accountDF.columns])
+# #COMPLAINTdf.createOrReplaceTempView("RESPONSYS_COMPLAINT")
+
+# gscPythonOptions = {
+#     "url": "jdbc:postgresql://edm_gp_prod.edm.ppc:6432/edmprod",
+#     "user": "null",
+#     "password": "null",
+#     "dbschema": "nls",
+#     "dbtable": "xxcon_account_nls"
+# }
+
+# accountDF.write.format('greenplum').options(**gscPythonOptions).mode('overwrite').option("truncate",True).save()
+
+
+# url,user_name,passwd =get_oracle_cred("prodfin")
+# sourcetable = "xxcontract.xxcon_nlscontract"
+# partitionColumn ="CREATIONDATE"
+# lowerBound ='2005-01-01 00:00:00'
+# upperBound ='2026-01-01 00:00:00'
+# batch_size =50
+# contractDF = spark.read \
+#     .format("jdbc") \
+#     .option("dbtable",sourcetable) \
+#     .option("url",url ) \
+#     .option("user",user_name) \
+#     .option("password", passwd ) \
+#     .option("partitionColumn", partitionColumn) \
+#     .option("lowerBound", lowerBound) \
+#     .option("upperBound", upperBound) \
+#     .option("numPartitions", batch_size) \
+#     .option("driver", "oracle.jdbc.driver.OracleDriver") \
+#     .option("oracle.jdbc.mapDateToTimestamp", "false")\
+#     .option("sessionInitStatement", "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD hh24:mi:ss'")\
+#     .option("fetchsize","50000") \
+#     .load()#.filter("LAUNCH_TYPE not in ('X','U','V','T')")
+# contractDF=contractDF.toDF(*[c.lower() for c in contractDF.columns])
+# #COMPLAINTdf.createOrReplaceTempView("RESPONSYS_COMPLAINT")
+
+# gscPythonOptions = {
+#     "url": "jdbc:postgresql://edm_gp_prod.edm.ppc:6432/edmprod",
+#     "user": "null",
+#     "password": "null",
+#     "dbschema": "nls",
+#     "dbtable": "xxcon_contract_nls"
+# }
+
+# contractDF.write.format('greenplum').options(**gscPythonOptions).mode('overwrite').option("truncate",True).save()
+
+
+if(preloadDf.count()>0):
+    query="""
+    insert into nls.nls_treasury_datatape_daily select * from nls.nls_treasury_datatape_daily_v
+    """
+    GPExecute(query)
+else:
+    print('No Preload Data')
